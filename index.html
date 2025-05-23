@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Social Sims</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="sidebar">
+            <h1>Smart Social Sims</h1>
+            <div id="controls">
+                <button id="play-pause-btn">Play</button>
+                <button id="reset-btn">Reset</button>
+                <label>
+                    Speed: <span id="speed-display">1x</span>
+                    <input type="range" id="speed-slider" min="0.5" max="3" step="0.5" value="1">
+                </label>
+            </div>
+            <div id="selected-agent-info">
+                <h2>Selected Agent</h2>
+                <div id="agent-details">Click on an agent to see details</div>
+            </div>
+            <div id="activity-log">
+                <h2>Activity Log</h2>
+                <div id="log-entries"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
