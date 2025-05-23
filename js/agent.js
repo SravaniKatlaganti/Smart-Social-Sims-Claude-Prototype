@@ -184,3 +184,169 @@ export class Agent {
             });
         }
     }
+    
+    findInteractionPartner(allAgents) {
+        const nearbyAgents = allAgents.filter(agent => {
+            if (agent === this) return false;
+            const dist = Math.abs(agent.x - this.x) + Math.abs(agent.y - this.y);
+            return dist < 10;
+        });
+        
+        if (nearbyAgents.length > 0) {
+            // Choose based on relationship
+            nearbyAgents.sort((a, b) => {
+                const relA = this.relationships[a.name] || 50;
+                const relB = this.relationships[b.name] || 50;
+                return relB - relA;
+            });
+            
+            this.interactionPartner = nearbyAgents[0];
+            this.currentActivity = 'Chatting';
+            
+            // Move towards partner
+            this.path = this.pathfinder.findPath(
+                { x: this.x, y: this.y },
+                { x: this.interactionPartner.x, y: this.interactionPartner.y }
+            );
+        }
+    }
+    
+    executeActivity(deltaTime, allAgents) {
+        switch (this.currentActivity) {
+            case 'Chatting':
+                if (this.interactionPartner) {
+                    const dist = Math.abs(this.interactionPartner.x - this.x) + 
+                                Math.abs(this.interactionPartner.y - this.y);
+                    
+                    if (dist <= 2) {
+                        // Chat and improve relationship
+                        this.needs.social = Math.min(100, this.needs.social + 10 * deltaTime);
+                        
+                        // Update relationship
+                        const currentRel = this.relationships[this.interactionPartner.name] || 50;
+                        this.relationships[this.interactionPartner.name] = 
+                            Math.min(100, currentRel + 2 * deltaTime);
+                        
+                        // Memory of interaction
+                        if (Math.random() < 0.01) {
+                            this.memory.remember({
+                                type: 'interaction',
+                                description: `Had a nice chat with ${this.interactionPartner.name}`,
+                                person: this.interactionPartner.name,
+                                time: Date.now()
+                            });
+                        }
+                    } else {
+                        // Partner moved away
+                        this.interactionPartner = null;
+                        this.currentActivity = 'Idle';
+                    }
+                }
+                break;
+                
+            case 'Relaxing':
+                this.needs.energy = Math.min(100, this.needs.energy + 15 * deltaTime);
+                this.needs.fun = Math.min(100, this.needs.fun + 5 * deltaTime);
+                break;
+                
+            case 'Exercising':
+                this.needs.fun = Math.min(100, this.needs.fun + 20 * deltaTime);
+                this.needs.energy = Math.max(0, this.needs.energy - 5 * deltaTime);
+                break;
+                
+            case 'Working':
+                this.needs.fun = Math.max(0, this.needs.fun - 10 * deltaTime);
+                break;
+        }
+    }
+    
+    moveAlongPath() {
+        if (this.path.length === 0) return;
+        
+        const next = this.path[0];
+        
+        // Check if position is occupied by another agent
+        const occupied = false; // Simplified - in real implementation check other agents
+        
+        if (!occupied) {
+            this.x = next.x;
+            this.y = next.y;
+            this.path.shift();
+            
+            // Check if reached destination
+            if (this.path.length === 0) {
+                const location = this.world.getLocationAt(this.x, this.y);
+                if (location) {
+                    this.memory.remember({
+                        type: 'location',
+                        description: `Arrived at ${location}`,
+                        location: location,
+                        time: Date.now()
+                    });
+                    
+                    // Set appropriate activity for location
+                    this.setActivityForLocation(location);
+                }
+            }
+        }
+    }
+    
+    setActivityForLocation(location) {
+        switch (location) {
+            case 'Home':
+                this.currentActivity = 'Relaxing';
+                break;
+            case 'Work':
+                this.currentActivity = 'Working';
+                break;
+            case 'Gym':
+                this.currentActivity = 'Exercising';
+                break;
+            case 'Park':
+            case 'Café':
+            case 'Library':
+                this.currentActivity = 'Relaxing';
+                break;
+            default:
+                this.currentActivity = 'Idle';
+        }
+    }
+    
+    draw(ctx, tileSize) {
+        // Draw agent circle
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(
+            this.x * tileSize + tileSize / 2,
+            this.y * tileSize + tileSize / 2,
+            tileSize / 3,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Draw name
+        ctx.fillStyle = 'white';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(
+            this.name,
+            this.x * tileSize + tileSize / 2,
+            this.y * tileSize
+        );
+        
+        // Draw activity indicator
+        if (this.currentActivity !== 'Idle') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '8px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(
+                this.currentActivity,
+                this.x * tileSize + tileSize / 2,
+                this.y * tileSize + tileSize + 2
+            );
+        }
+    }
+}
